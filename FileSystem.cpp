@@ -8,6 +8,7 @@
 #include<sstream>
 #include<string.h>
 #include<cmath>
+#include<iomanip>
 using namespace std;
 char buffer[1024];
 FileSystem::FileSystem()
@@ -256,7 +257,7 @@ void FileSystem::handle_command()
         {
             if(commands.size() != 2)
             {
-                cout<<"The number of parameters should be 3!"<<endl;
+                cout<<"The number of parameters should be 2!"<<endl;
             }
             else
             {
@@ -273,7 +274,14 @@ void FileSystem::handle_command()
         }
         else if(commands[0] == "dir")
         {
-
+            if(commands.size() != 1)
+            {
+                cout<<"The number of parameters should be 1!"<<endl;
+            }
+            else
+            {
+                cout<<dir_list()<<endl;
+            }
         }
         else if(commands[0] == "cp")
         {
@@ -281,6 +289,14 @@ void FileSystem::handle_command()
         }
         else if(commands[0] == "sum")
         {
+            if(commands.size() != 1)
+            {
+                cout<<"The number of parameters should be 1!"<<endl;
+            }
+            else
+            {
+                sum();
+            }
 
         }
         else if(commands[0] == "cat")
@@ -300,9 +316,16 @@ void FileSystem::handle_command()
         }
         else if(commands[0] == "exit")
         {
+            // cout<<"退出之前读一下"<<endl;
+            // cout<<superBlock.used_block_count<<" "<<superBlock.used_inode_count<<endl;
             //把super block写回去
             file.seekp(0,ios::beg);
             file.write((char *)&superBlock,sizeof(superBlock));
+            // cout<<"写进去之后读出来kk"<<endl;
+            // struct superblock temp;
+            // file.seekg(0,ios::beg);
+            // file.read((char*)&temp,sizeof(temp));
+            // cout<<temp.used_block_count<<" "<<temp.used_inode_count<<endl;
             exit(0);
         }
         else
@@ -415,12 +438,13 @@ std::string FileSystem::createFile(string filepath,int size)
     //cout<<"找到的inodeid为"<<id<<endl;
     file_data.set_InodeID(id);
     modify_inode_bitmap(id);
+    superBlock.used_inode_count++;
     //把文件名和inode写进当前目录(目录也会被更新后写进文件系统)  ！这里需要把inode也更新，传值进去没用
     add_file_to_dir(file_data,temp_cur_inode);
     //根据bitmap中block的使用情况来分配block
     //因为size的大小是KB，所以size是多大就需要用几块    //该文件需要用到多少块
     int block_count = size;
-    int addr[10];
+    int addr[10] = {0};
     int indirect_addr = -1;
     vector<int> indirect;
     for(int i = 0; i < block_count; i++)
@@ -430,12 +454,14 @@ std::string FileSystem::createFile(string filepath,int size)
         {
             addr[i] = find_free_block();
             modify_block_bitmap(addr[i]);
+            superBlock.used_block_count++;
         }
         else
         {
             int temp_block_id = find_free_block();
             indirect.push_back(temp_block_id);
             modify_block_bitmap(temp_block_id);
+            superBlock.used_block_count++;
         }
     }
     int min_block = min(10,block_count);
@@ -449,6 +475,7 @@ std::string FileSystem::createFile(string filepath,int size)
         int temp_block_id = find_free_block();
         indirect_addr = temp_block_id;
         modify_block_bitmap(temp_block_id);
+        superBlock.used_block_count++;
         //把vector里的地址数据添进indirect_addr所指向的data block
         file.seekp(indirect_addr*BLOCK_SIZE,ios::beg);
         for(int i = 0; i < indirect.size();i++)
@@ -611,6 +638,7 @@ void FileSystem::add_file_to_dir(File& file_data,Inode& inode)
         {
             addr[i] = find_free_block();
             modify_block_bitmap(addr[i]);
+            superBlock.used_block_count++;
             inode.set_direct_block_address(addr);
         }
         cout<<"写这块"<<addr[i]<<endl;
@@ -777,6 +805,7 @@ string FileSystem::createDir(string dirPath)
     int id = find_free_inode();
     file_data.set_InodeID(id);
     modify_inode_bitmap(id);
+    superBlock.used_inode_count++;
     //把目录名和inode写进当前目录(目录也会被更新后写进文件系统)
     add_file_to_dir(file_data,temp_cur_inode);
     
@@ -924,4 +953,80 @@ Inode FileSystem::isValidPath(vector<std::string>& dirs,Inode inode)
         }
     }
     return inode;
+}
+
+//列出当前工作目录下的子目录和文件
+string FileSystem::dir_list()
+{
+    //读取当前inode下到底有多少个文件
+    int file_count = cur_inode.get_file_count();
+    //读取几个块
+    int block_count = file_count/FILE_PER_BLOCK;
+    if(file_count%FILE_PER_BLOCK != 0)
+    {
+        block_count++;
+    }
+    int min_block= min(block_count,10);
+    int addr[10];
+    memcpy(addr,cur_inode.get_direct_block_address(),10*4);
+    for(int i = 0; i < min_block; i++)
+    {
+        //读取当前block
+        file.seekg(addr[i]*BLOCK_SIZE,ios::beg);
+        if(file_count < FILE_PER_BLOCK)
+        {
+            //读file_count个
+            for(int j = 0; j < file_count; j++)
+            {
+                File file_data;
+                file.read((char *)&file_data,sizeof(File));
+                cout<<file_data.get_FileName()<<endl;
+            }
+        }
+        else
+        {
+            //读FILE_PER_BLCOK个
+            for(int j = 0; j < FILE_PER_BLOCK; j++)
+            {
+                File file_data;
+                file.read((char *)&file_data,sizeof(File));
+                cout<<file_data.get_FileName()<<endl;
+            }
+            file_count -= FILE_PER_BLOCK;
+        }
+    }
+    if(block_count > 10)
+    {
+        //继续读取间接地址
+        int indirect = cur_inode.get_indirect_block_address();
+        if(indirect == -1)
+        {
+            return "error";
+        }
+        //还有几个地址要读
+        int remain_block = block_count - 10;
+        int remain_addr[remain_block];
+        //找到存地址的block
+        file.seekg(indirect*BLOCK_SIZE,ios::beg);
+        for(int i = 0; i < remain_block; i++)
+        {
+            file.read((char*)&remain_addr[i],sizeof(int));
+        }
+        //读对应地址里的block
+        for(int i = 0; i < remain_block; i++)
+        {
+            file.seekg(remain_addr[i]*BLOCK_SIZE,ios::beg);
+            File file_data;
+            file.read((char *)&file_data,sizeof(File));
+            cout<<file_data.get_FileName()<<endl;
+        }        
+    }
+    return "This is all of the files and sub-directories.";
+
+}
+
+void FileSystem::sum()
+{
+    cout<<"Usage of blocks:"<<setw(5)<<superBlock.used_block_count<<"/"<<superBlock.block_count<<endl;
+    cout<<"Usage of inodes:"<<setw(5)<<superBlock.used_inode_count<<"/"<<superBlock.inode_count<<endl;
 }

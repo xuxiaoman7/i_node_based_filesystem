@@ -75,6 +75,10 @@ public:
     std::vector<std::string> segment_path(std::string);
     //查找路径是否存在(传入当前目录的inode，传入路径的各级目录，如果存在，返回最后一个目录的inode，如果不存在，返回id为-1的inode)
     Inode isValidPath(std::vector<std::string>&,Inode);
+    //列出当前工作目录下的子目录和文件
+    std::string dir_list();
+    //列出当前文件系统的使用情况
+    void sum();
 private:
     //超级块
     struct superblock superBlock;
