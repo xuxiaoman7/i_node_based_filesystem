@@ -5,13 +5,22 @@ Inode::Inode()
     created_time = time(0);
     modified_time = created_time;
     byte_size = 0;
-    memset(direct_block_address,0,sizeof(direct_block_address));
-    indirect_block_address = 0;
+    for(int i = 0; i < 10; i++)
+    {
+        direct_block_address[i] = -1;
+    }
+    //memset(direct_block_address,0,sizeof(direct_block_address));
+    indirect_block_address = -1;
 }
 
 Inode::~Inode()
 {
 
+}
+
+int Inode::get_id()
+{
+    return id;
 }
 
 int Inode::get_byte_size()
@@ -37,6 +46,11 @@ int* Inode::get_direct_block_address()
 int Inode::get_indirect_block_address()
 {
     return indirect_block_address;
+}
+
+void Inode::set_id(int id)
+{
+    this->id = id;
 }
 
 void Inode::set_byte_size(int byte_size)
