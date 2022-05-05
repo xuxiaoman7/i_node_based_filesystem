@@ -50,6 +50,7 @@ public:
     std::string createFile(std::string,int);
     //查找给定inode下的是否有给定目录（文件）存在，如果存在，返回inode，如果不存在，返回id为-1的inode
     Inode findInode(Inode,std::string);
+    void deleteFile();
 private:
     //超级块
     struct superblock superBlock;
