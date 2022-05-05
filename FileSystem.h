@@ -11,6 +11,8 @@
 #define INODE_BITMAP_SIZE 1024
 #define BLOCK_BITMAP_SIZE 1024
 #define INODE_TABLE_SIZE (1024*1024)
+#define FILENAME_SIZE 8            //目录中文件名占据的字节长度
+#define INODE_ID_SIZE 8            //目录中文件名对应的inode编号占据的字节长度
 
 
 struct superblock
@@ -36,12 +38,18 @@ public:
     void welcome();
     //帮助
     void help();
+    //将string转换为int并判断是不是纯数字
+    bool string_to_int(std::string,int&);
     //修改block bitmap中的某一个比特位(0变1，1变0)(参数：哪一位)
     void modify_block_bitmap(int);
     //修改inode bitmap中的某一个比特位(0变1，1变0)(参数：哪一位)
     void modify_inode_bitmap(int);
     //处理用户输入的命令
     void handle_command();
+    //创建文件(文件名和文件大小，返回是否创建成功)
+    std::string createFile(std::string,int);
+    //查找给定inode下的是否有给定目录（文件）存在，如果存在，返回inode，如果不存在，返回id为-1的inode
+    Inode findInode(Inode,std::string);
 private:
     //超级块
     struct superblock superBlock;

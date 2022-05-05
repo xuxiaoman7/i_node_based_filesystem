@@ -24,7 +24,7 @@ private:
     int id;
     time_t created_time;
     time_t modified_time;
-    int byte_size;
+    int byte_size;                   
     int direct_block_address[10];
     int indirect_block_address;
 };

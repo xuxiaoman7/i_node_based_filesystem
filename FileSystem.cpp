@@ -6,6 +6,7 @@
 #include<fstream>
 #include<sstream>
 #include<string.h>
+#include<cmath>
 using namespace std;
 char buffer[1024];
 FileSystem::FileSystem()
@@ -125,6 +126,29 @@ void FileSystem::help()
     cout<<"--cat fileName                    print out the file contents"<<endl;
 }
 
+//将string转换为int并判断是不是纯数字
+bool FileSystem::string_to_int(string s,int& size)
+{
+    size = 0;
+    int n = s.length();
+    bool isD = true;
+    for(int i = 0; i < n; i++)
+    {
+        if(!isdigit(s[i]))
+        {
+            isD = false;
+            break;
+        }
+        else
+        {
+            int temp = (int)(s[i]-'0');
+            size += temp*(int)pow(10,n-i-1);
+        }
+    }
+    return isD;
+}
+
+
 //修改block bitmap中的某一个比特位(参数：哪一位)
 void FileSystem::modify_block_bitmap(int position)
 {
@@ -185,78 +209,29 @@ void FileSystem::handle_command()
         //分析第一个到底是什么
         if(commands[0] == "createFile")
         {
-            if(commands.size() != 3)
-            {
-                cout<<"Please input the commands in correct format!"<<endl;
-            }
-            else
-            {
-                //如果想要创建的文件大小大于266kB，则驳回
-                if(commands[2] > "266")
-                {
-                    cout<<"Fail to create! Please a smaller size!"<<endl;
-                }
-                else
-                {
-                    Inode temp_cur_inode; //记录创建文件的路径的节点
-                    string filename = commands[1];
-                    //判断是绝对路径还是相对路径
-                    if(filename[0] == '/')              //绝对路径
-                    {
-                        temp_cur_inode = root_inode;
-                        filename = filename.substr(1,filename.size()-1);
-                    }
-                    else                                //相对路径
-                    {
-                        temp_cur_inode = cur_inode;
-                    }
-                    //分割路径和文件名
-                    string::size_type i = filename.find('/',0);
-                    vector<string> names;
-                    while(i != string::npos)
-                    {
-                        names.push_back(filename.substr(0,i));
-                        filename = filename.substr(i+1,filename.length()-(i+1));
-                        i = filename.find('/',0);
-                    }
-                    //文件名
-                    string name = filename;
-                    bool isValidPath = true;
-                    //如果路径是空的
-                    if(names.empty())
-                    {
-                        //说明就是根目录下，那路径一定存在
-                        isValidPath = true;
-                    }
-                    else
-                    {
-                        //说明不是根目录下，要判断路径存不存在(从当前这个inode开始往下找)
-                        //判断当前inode下有没有name[0]
-                        //读取inode对应的blcok里的东西
-                        //读inode里的地址
-                        vector<int> direct_address;
-                        for(int i = 0; i < 10; i++)
-                        {
-                            int t = temp_cur_inode.get_direct_block_address()[i];
-                            if(t != -1)
-                            {
-                                direct_address.push_back(t);
-                            }
-                            else
-                            {
-                                break;
-                            }
-                        }
-                        if(direct_address.size() == 10)
-                        {
-                            //判断一下间接地址
-                        }
-                    }
-                    
-                    //判断一下有没有文件重名
-
-                }
-            }
+           if(commands.size() != 3)
+           {
+               cout<<"The number of parameters should be 3!"<<endl;
+           }
+           else
+           {
+               int size;
+               if(!string_to_int(commands[2],size))
+               {
+                   cout<<"Fail to create! File size should be a positive number!"<<endl;
+               }
+               else
+               {
+                   if(size > 266)
+                   {
+                       cout<<"Fail to create!Please use a smaller size!"<<endl;
+                   }
+                   else
+                   {
+                       cout<<createFile(commands[1],size)<<endl;
+                   }
+               }
+           }
         }
         else if(commands[0] == "deleteFile")
         {
@@ -299,3 +274,73 @@ void FileSystem::handle_command()
     }
 
 }
+
+//返回成功创建的信息或错误信息
+std::string FileSystem::createFile(string filepath,int size)
+{
+    Inode temp_cur_inode;
+    if(filepath[0] == '/')
+    {
+        temp_cur_inode = root_inode;
+        filepath = filepath.substr(1,filepath.length()-1);
+    }
+    else
+    {
+        temp_cur_inode = cur_inode;
+    }
+
+    //分割路径和文件名
+    string::size_type i = filepath.find('/',0);
+    vector<string> dirs;
+    while(i != string::npos)
+    {
+        dirs.push_back(filepath.substr(0,i));
+        filepath = filepath.substr(i+1,filepath.length()-(i+1));
+        i = filepath.find('/',0);
+    }
+    //现在的filepath就是文件名了
+    string filename = filepath;
+    //没有输入文件名
+    if(filename == "")
+    {
+        return "Please input the filename!";
+    }
+    
+    //开始查找路径是否存在
+    for(int i = 0; i < dirs.size(); i++)
+    {
+        Inode temp_inode = findInode(temp_cur_inode,dirs[i]);
+        if(temp_inode.get_id() == -1)
+        {
+            return "Path is not exist!";
+        }
+        else
+        {
+            temp_cur_inode = temp_inode;
+        }
+    }
+
+    //判断文件名存不存在
+    Inode temp_inode = findInode(temp_cur_inode,filename);
+    if(temp_inode.get_id() != -1)
+    {
+        return "File has been exist!";
+    }
+
+    //判断inode还有没有得用
+    
+    //判断目录下还有没有空间
+
+    //判断data block里剩余空间还够不够
+
+    
+
+    return "Create successfully!";
+}
+
+Inode FileSystem::findInode(Inode inode,string filename)
+{
+    Inode resultInode;
+    return resultInode;
+}
+

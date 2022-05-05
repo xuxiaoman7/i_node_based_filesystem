@@ -2,6 +2,7 @@
 #include<string.h>
 Inode::Inode()
 {
+    id = -1;
     created_time = time(0);
     modified_time = created_time;
     byte_size = 0;
