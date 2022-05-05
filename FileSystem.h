@@ -42,6 +42,7 @@ public:
     void modify_inode_bitmap(int);
     //处理用户输入的命令
     void handle_command();
+    void deleteFile();
 private:
     //超级块
     struct superblock superBlock;

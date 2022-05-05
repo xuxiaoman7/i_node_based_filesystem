@@ -260,7 +260,7 @@ void FileSystem::handle_command()
         }
         else if(commands[0] == "deleteFile")
         {
-
+           deleteFile();
         }
         else if(commands[0] == "createDir")
         {
@@ -298,4 +298,8 @@ void FileSystem::handle_command()
         getline(cin,command);
     }
 
+}
+void FileSystem::deleteFile()
+{
+  cout<<"no problem"<<endl;
 }
