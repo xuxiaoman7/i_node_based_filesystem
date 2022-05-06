@@ -3,6 +3,8 @@
 Inode::Inode()
 {
     id = -1;
+    file_type = DIRECTORY_TYPE;   //默认为目录
+    file_count = 0;
     created_time = time(0);
     modified_time = created_time;
     byte_size = 0;
@@ -49,6 +51,16 @@ int Inode::get_indirect_block_address()
     return indirect_block_address;
 }
 
+int Inode::get_file_type()
+{
+    return file_type;
+}
+
+int Inode::get_file_count()
+{
+    return file_count;
+}
+
 void Inode::set_id(int id)
 {
     this->id = id;
@@ -77,4 +89,14 @@ void Inode::set_direct_block_address(int direct_block_address[])
 void Inode::set_indirect_block_address(int indirect_block_address)
 {
     this->indirect_block_address = indirect_block_address;
+}
+
+void Inode::set_file_type(int type)
+{
+    file_type = type;
+}
+
+void Inode::set_file_count(int count)
+{
+    file_count = count;
 }
