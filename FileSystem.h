@@ -67,6 +67,8 @@ public:
     void save_inode(Inode);
     //往新建的文件里写入xx字节的数据
     void write_random_string_to_file(int);
+    //创建新目录
+    std::string createDir(std::string);
 private:
     //超级块
     struct superblock superBlock;

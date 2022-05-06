@@ -248,7 +248,14 @@ void FileSystem::handle_command()
         }
         else if(commands[0] == "createDir")
         {
-
+            if(commands.size() != 2)
+            {
+                cout<<"The number of parameters should be 3!"<<endl;
+            }
+            else
+            {
+                cout<<createDir(commands[1])<<endl;
+            }
         }
         else if(commands[0] == "deleteDir")
         {
@@ -595,4 +602,96 @@ void FileSystem::write_random_string_to_file(int block_id)
    
     file.seekp(block_id*BLOCK_SIZE,ios::beg);
     file.write((char*)&buffer,sizeof(buffer));
+}
+
+string FileSystem::createDir(string dirPath)
+{
+    Inode temp_cur_inode;
+    //查找路径存不存在
+    if(dirPath[0] == '/')
+    {
+        temp_cur_inode = root_inode;
+    }
+    else
+    {
+        temp_cur_inode = cur_inode;
+    }
+    //分割路径和目录名
+    string::size_type i = dirPath.find('/',0);
+    vector<string> dirs;
+    while(i != string::npos)
+    {
+        dirs.push_back(dirPath.substr(0,i));
+        dirPath = dirPath.substr(i+1,dirPath.length()-(i+1));
+        i = dirPath.find('/',0);
+    }
+    //现在的dirpath就是目录名了
+    string dirname = dirPath;
+    //没有输入目录名
+    if(dirname == "")
+    {
+        return "Please input the directory name!";
+    }
+
+    //开始查找路径是否存在
+    for(int i = 0; i < dirs.size(); i++)
+    {
+        Inode temp_inode = findInode(temp_cur_inode,dirs[i]);
+        if(temp_inode.get_id() == -1)
+        {
+            return "Path is not exist!";
+        }
+        else if(temp_inode.get_file_type() == FILE_TYPE)           //找到的是文件而非目录
+        {
+            return "Path is not exist!";
+        }
+        else
+        {
+            temp_cur_inode = temp_inode;
+        }
+    }
+
+    //判断要创建的目录名存不存在
+    Inode temp_inode = findInode(temp_cur_inode,dirname);
+    if(temp_inode.get_id() != -1)
+    {
+        return "Directory has been exist!";
+    }
+
+    //判断inode还有没有得用
+    if(superBlock.inode_count == superBlock.used_inode_count)
+    {
+        return "You have created too many files! Please delete some files and try again.";
+    }
+    //判断目录下还有没有空间
+    if(temp_cur_inode.get_file_count() >= MAX_FILE_COUNT_PER_DIRECTORY)
+    {
+        return "You have created too many files in current path! Please delete some and retry.";
+    }
+    //判断data block里剩余空间还够不够
+    if(superBlock.block_count == superBlock.used_block_count)
+    {
+        return "You have created too many files! Please delete some files and try again.";
+    }
+
+    //开始创建目录
+    File file_data;
+    char dirn[MAX_FILENAME_LENGTH];
+    strcpy(dirn,dirname.c_str());
+    file_data.set_FileName(dirn);
+    //根据bitmap寻找没用到的inode
+    int id = find_free_inode();
+    file_data.set_InodeID(id);
+    //把目录名和inode写进当前目录(目录也会被更新后写进文件系统)
+    add_file_to_dir(file_data,temp_cur_inode);
+    
+    //创建dir node对应的inode
+    Inode dinode;
+    dinode.set_file_type(DIRECTORY_TYPE);
+    dinode.set_id(id);
+    //把inode写进去
+    file.seekp(BLOCK_SIZE+INODE_BITMAP_SIZE+BLOCK_BITMAP_SIZE+id*INODE_SIZE,ios::beg);
+    file.write((char*)&dinode,sizeof(Inode));
+
+    return "Create successfully!";
 }
