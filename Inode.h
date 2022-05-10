@@ -38,5 +38,6 @@ private:
     int direct_block_address[10];
     int indirect_block_address;
     int used_block;
+    //int temp[10];
 };
 #endif

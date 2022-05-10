@@ -60,7 +60,7 @@ public:
     //根据bitmap找空闲的inode,并返回inode id
     int find_free_inode();
     //往目录中加入文件名和文件id
-    void add_file_to_dir(File&,Inode);
+    void add_file_to_dir(File&,Inode&);
     //根据blockmap找空闲的block,并返回data block id
     int find_free_block();
     //把inode写进文件系统
@@ -69,6 +69,12 @@ public:
     void write_random_string_to_file(int);
     //创建新目录
     std::string createDir(std::string);
+    //输出文件内容（cat）
+    std::string catFile(std::string);
+    //分割路径和文件名(返回各级目录和文件名/目录名)
+    std::vector<std::string> segment_path(std::string);
+    //查找路径是否存在(传入当前目录的inode，传入路径的各级目录，如果存在，返回最后一个目录的inode，如果不存在，返回id为-1的inode)
+    Inode isValidPath(std::vector<std::string>&,Inode);
 private:
     //超级块
     struct superblock superBlock;
