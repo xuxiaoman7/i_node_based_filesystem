@@ -221,7 +221,6 @@ void FileSystem::handle_command()
             i = command.find(" ",0);   
         }
         commands.push_back(command);
-
         //分析第一个到底是什么
         if(commands[0] == "createFile")
         {
@@ -292,8 +291,12 @@ void FileSystem::handle_command()
             }
             else
             {
-                cout<<catFile(commands[1]);
+                cout<<catFile(commands[1])<<endl;
             }
+        }
+        else if(commands[0] == "help")
+        {
+            help();
         }
         else if(commands[0] == "exit")
         {
@@ -336,6 +339,12 @@ std::string FileSystem::createFile(string filepath,int size)
     //     i = filepath.find('/',0);
     // }
     vector<string> dirs = segment_path(filepath);
+        //分割完的东西
+    cout<<"分割完的东西"<<endl;
+    for(int i = 0; i< dirs.size(); i++)
+    {
+        cout<<dirs[i];
+    }
     //把最后一个文件名拿出来
     string filename = dirs[dirs.size()-1];
     //没有输入文件名
@@ -409,12 +418,8 @@ std::string FileSystem::createFile(string filepath,int size)
     //把文件名和inode写进当前目录(目录也会被更新后写进文件系统)  ！这里需要把inode也更新，传值进去没用
     add_file_to_dir(file_data,temp_cur_inode);
     //根据bitmap中block的使用情况来分配block
-    //int block_count = size/BLOCK_SIZE+1;    //该文件需要用到多少块
-    int block_count = size/BLOCK_SIZE;
-    if(size%BLOCK_SIZE != 0)
-    {
-        block_count++;
-    }
+    //因为size的大小是KB，所以size是多大就需要用几块    //该文件需要用到多少块
+    int block_count = size;
     int addr[10];
     int indirect_addr = -1;
     vector<int> indirect;
@@ -440,7 +445,10 @@ std::string FileSystem::createFile(string filepath,int size)
     }
     if(!indirect.empty())
     {
-        indirect_addr = find_free_block();
+        //找一块来存放间接地址所指向的块
+        int temp_block_id = find_free_block();
+        indirect_addr = temp_block_id;
+        modify_block_bitmap(temp_block_id);
         //把vector里的地址数据添进indirect_addr所指向的data block
         file.seekp(indirect_addr*BLOCK_SIZE,ios::beg);
         for(int i = 0; i < indirect.size();i++)
@@ -457,7 +465,7 @@ std::string FileSystem::createFile(string filepath,int size)
     
     Inode finode;
     finode.set_id(id);
-    finode.set_byte_size(size);
+    finode.set_byte_size(size*(int)pow(2,10));       //把KB转化成B
     finode.set_created_time(time(0));
     finode.set_modified_time(time(0));
     finode.set_file_type(FILE_TYPE);
@@ -507,6 +515,7 @@ Inode FileSystem::findInode(Inode inode,string filename)
                 //这里读不出出来，不知道为什么！
                 cout<<"现在找到的文件inodeid为"<<testFile.get_InodeID()<<endl;
                 cout<<"现在找到的文件名为"<<testFile.get_FileName()<<endl;
+                cout<<filename.c_str()<<endl;
                 if(strcmp(testFile.get_FileName(),filename.c_str()) == 0)
                 {
                     //找到了
@@ -787,17 +796,91 @@ string FileSystem::createDir(string dirPath)
 string FileSystem::catFile(string filePath)
 {
     Inode temp_cur_inode;
-    if(filePath[0] = '/')
+    if(filePath[0] == '/')
     {
         temp_cur_inode = root_inode;
+        filePath = filePath.substr(1,filePath.length()-1);
     }
     else
     {
         temp_cur_inode = cur_inode;
     }
     //分割路径和文件名
-
-
+    cout<<"路径"<<filePath<<endl;
+    vector<string> dirs = segment_path(filePath);
+    string filename = dirs[dirs.size()-1];
+    //如果没有输入文件名
+    if(filename == "")
+    {
+        return "Please input the filename!";
+    }
+    //判断路径是否存在
+    Inode temp = isValidPath(dirs,temp_cur_inode);
+    if(temp.get_id() == -1)
+    {
+        return "Path is not exist!";
+    }
+    else
+    {
+        temp_cur_inode = temp;
+    }
+    //判断文件名存在吗
+    Inode temp_inode = findInode(temp_cur_inode,filename);
+    if(temp_inode.get_id() == -1)
+    {
+        return "File is not exist!";
+    }
+    else if(temp_inode.get_file_type() == DIRECTORY_TYPE)
+    {
+        return "It is not a file!";
+    }
+    else
+    {
+        temp_cur_inode = temp_inode;
+    }
+    //现在的temp_cur_inode就是文件的inode
+    int addr[10];
+    memcpy(addr,temp_cur_inode.get_direct_block_address(),10*4);
+    int byte_size = temp_cur_inode.get_byte_size();
+    //计算会用几个block
+    int block_count = byte_size/BLOCK_SIZE;
+    int min_block = min(10,block_count);
+    for(int i = 0; i < min_block; i++)
+    {
+        file.seekg(addr[i]*BLOCK_SIZE,ios::beg);
+        char buffer[BLOCK_SIZE];
+        file.read((char*)buffer,BLOCK_SIZE);
+        cout<<buffer;
+        cout<<"读";
+    }
+    if(block_count > 10)
+    {
+        //读取间接地址
+        int indirect_addr = temp_cur_inode.get_indirect_block_address();
+        if(indirect_addr == -1)
+        {
+            return "error";
+        }
+        int remain_block = block_count-10;     //还有几个地址要读
+        int remain_addr[remain_block];
+        //找到存地址的block
+        file.seekg(indirect_addr*BLOCK_SIZE,ios::beg);
+        for(int i = 0; i < remain_block; i++)
+        {
+            file.read((char*)&remain_addr[i],sizeof(int));
+        }
+        //读对应地址里的block
+        for(int i = 0; i < remain_block; i++)
+        {
+            file.seekg(remain_addr[i]*BLOCK_SIZE,ios::beg);
+            char buffer[BLOCK_SIZE];
+            file.read((char*)buffer,sizeof(buffer));
+            cout<<buffer;   
+            cout<<"读";
+        }
+    }
+    cout<<endl;
+    return "That is all of the file";
 }
 
 //分割路径和文件名
