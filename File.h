@@ -6,7 +6,7 @@
 class File
 {
 private:
-    char FileName[MAX_FILENAME_LENGTH];             //文件名最长为12字节
+    char FileName[MAX_FILENAME_LENGTH];            
     int InodeID;
 public:
     File();

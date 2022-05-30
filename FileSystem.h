@@ -1,23 +1,23 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
+#include<vector>
 #include<fstream>
 #include"Inode.h"
 #include"File.h"
+#include<string>
 #include<string.h>
-#include<vector>
 #define BLOCK_COUNT 16384
 #define INODE_COUNT (1024*8)
 #define BLOCK_SIZE 1024
 #define INODE_SIZE 128
 #define INODE_BITMAP_SIZE 1024
-#define BLOCK_BITMAP_SIZE 2*1024         //应该是两个块才对
+#define BLOCK_BITMAP_SIZE 1024*2  //应该是两个块才对
 #define INODE_TABLE_SIZE (1024*1024)
-//#define FILENAME_SIZE 8            //目录中文件名占据的字节长度
-//#define INODE_ID_SIZE 8            //目录中文件名对应的inode编号占据的字节长度
 #define FILE_SIZE (MAX_FILENAME_LENGTH+4)    //目录下每个文件占据的大小
 #define MAX_FILE_COUNT_PER_DIRECTORY (266*(BLOCK_SIZE/FILE_SIZE)) //单个目录下可以存几个文件名
 #define FILE_PER_BLOCK (BLOCK_SIZE/FILE_SIZE)    //一个data block下可以放几个文件File
+using namespace std;
 
 struct superblock
 {
@@ -36,45 +36,60 @@ public:
     FileSystem();
     ~FileSystem();
 
-    //初始化
+    //初始化s
     void initial();
     //欢迎语
     void welcome();
     //帮助
     void help();
-    //将string转换为int并判断是不是纯数字
-    bool string_to_int(std::string,int&);
     //修改block bitmap中的某一个比特位(0变1，1变0)(参数：哪一位)
     void modify_block_bitmap(int);
     //修改inode bitmap中的某一个比特位(0变1，1变0)(参数：哪一位)
     void modify_inode_bitmap(int);
     //处理用户输入的命令
     void handle_command();
-    //创建文件(文件名和文件大小，返回是否创建成功)
-    std::string createFile(std::string,int);
+    //将string转换为int并判断是不是纯数字
+    bool string_to_int(std::string,int&);
     //查找给定inode下的是否有给定目录（文件）存在，如果存在，返回inode，如果不存在，返回id为-1的inode
-    Inode findInode(Inode,std::string);
-    void deleteFile();
+    //Inode findInode(Inode,std::string);
     //通过inodeid读取inode
-    Inode get_inode_byID(int);
+    Inode read_inode(int pos);
     //根据bitmap找空闲的inode,并返回inode id
     int find_free_inode();
-    //往目录中加入文件名和文件id
-    void add_file_to_dir(File&,Inode&);
     //根据blockmap找空闲的block,并返回data block id
     int find_free_block();
     //把inode写进文件系统
     void save_inode(Inode);
+    //分割路径和文件名(返回各级目录和文件名/目录名)
+    std::vector<std::string> split_path(std::string filepath);
     //往新建的文件里写入xx字节的数据
     void write_random_string_to_file(int);
+    //根据当前inode和文件路径寻找指定目录下的文件
+    Inode find_inode_from_path(std::vector<std::string> cur_filepath, Inode inode);
+    //判断当前block下是否存在File类并对inode进行处理
+    void check_and_modify_inode(bool is_direct, int file_location, Inode &inode);
+    //返回通过直接地址搜索得到的所有文件
+    std::vector<File> search_file_by_direct_address(Inode inode, std::string filename,int &block_addr, int &offset);
+    //返回通过间接地址搜索得到的所有文件
+    std::vector<File> search_file_by_indirect_address(Inode inode, std::string filename,int &block_addr, int &offset);
+    //往目录中加入文件名和文件id
+    void add_file_to_dir(File&,Inode&);
     //创建新目录
+    std::string createFile(std::string,int);
+    //删除指定inode下存储的信息，包括inode bitmap, block bitmap, inode table, block的信息
+    void delete_blockinfo_for_inode(Inode tar_inode);
+    //删除目标路径下的某一文件
+    void deleteFile(std::vector<std::string> spl_path, Inode tar_inode);
+    //删除某一个目录
+    std::string deleteDir(std::vector<std::string> spl_path, Inode tar_inode);
+    //将文件由所在路径复制到目标路径
+    void copy_path(std::string source_path, std::string target_path);
+    //更改当前工作目录
+    void changeDir(std::string file_path);
+    //创建文件(文件名和文件大小，返回是否创建成功)
     std::string createDir(std::string);
     //输出文件内容（cat）
     std::string catFile(std::string);
-    //分割路径和文件名(返回各级目录和文件名/目录名)
-    std::vector<std::string> segment_path(std::string);
-    //查找路径是否存在(传入当前目录的inode，传入路径的各级目录，如果存在，返回最后一个目录的inode，如果不存在，返回id为-1的inode)
-    Inode isValidPath(std::vector<std::string>&,Inode);
     //列出当前工作目录下的子目录和文件
     std::string dir_list();
     //列出当前文件系统的使用情况

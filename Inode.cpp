@@ -3,7 +3,7 @@
 Inode::Inode()
 {
     id = -1;
-    file_type = DIRECTORY_TYPE;   //默认为目录
+    file_type = DIRECTORY_TYPE;
     file_count = 0;
     created_time = time(0);
     modified_time = created_time;
@@ -14,6 +14,7 @@ Inode::Inode()
     }
     //memset(direct_block_address,0,sizeof(direct_block_address));
     indirect_block_address = -1;
+    
 }
 
 Inode::~Inode()

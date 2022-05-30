@@ -19,7 +19,7 @@ public:
     int get_indirect_block_address();
     int get_file_type();
     int get_file_count();
-
+    
     void set_id(int);
     void set_created_time(time_t);
     void set_modified_time(time_t);
@@ -30,14 +30,13 @@ public:
     void set_file_count(int);
 private:
     int id;
-    int file_type;   //1表示文件，0表示目录
-    int file_count;  //如果是目录的话，表示当前目录下的文件数量
+    int file_type; 
+    int file_count;
     time_t created_time;
     time_t modified_time;
-    int byte_size;                   
+    int byte_size;
     int direct_block_address[10];
     int indirect_block_address;
     int used_block;
-    //int temp[10];
 };
 #endif
